@@ -40,44 +40,6 @@
         </div>
         <p v-else class="text-center">[ UV Canvas Preview Placeholder ]</p>
         </v-sheet>
-
-        <!-- Layer Manager -->
-        <v-card variant="tonal" elevation="0">
-        <v-card-title>Tattoo Layers</v-card-title>
-            <v-card-text>
-                    <v-chip
-                    v-for="(layer, index) in layers"
-                    :key="layer.id"
-                    class="ma-1"
-                    label
-                    closable
-                    @click:close="removeLayer(layer.id)"
-                    :color="layer.selected ? 'primary' : ''"
-                    :variant="layer.selected ? 'flat' : 'tonal'"
-                    @click="selectLayer(layer)"
-                    >
-                    {{ layer.label }}
-                    <v-icon
-                        size="16"
-                        class="ml-1"
-                        icon="mdi-arrow-up"
-                        @click.stop="moveLayerUp(index)"
-                    />
-                    <v-icon
-                        size="16"
-                        icon="mdi-arrow-down"
-                        @click.stop="moveLayerDown(index)"
-                    />
-                    <v-icon
-                      size="16"
-                      icon="mdi-content-copy"
-                      @click.stop="duplicateLayer(layer)"
-                      title="Duplicate"
-                    />
-                </v-chip>
-                <p v-if="layers.length === 0" class="text-grey">No layers yet.</p>
-            </v-card-text>
-        </v-card>
     </v-col>
 
     <!-- Right Column -->
@@ -108,6 +70,7 @@
         :src="layer.src"
         :class="{ 'selected-layer': layer.selected }"
         :style="{
+            opacity: layer.opacity,
             position: 'absolute',
             top: `${layer.y}px`,
             left: `${layer.x}px`,
@@ -123,6 +86,65 @@
         />
         </div>
         </v-sheet>
+        <!-- Layer Manager -->
+        <v-card variant="tonal" elevation="0">
+        <v-card-title>Tattoo Layers</v-card-title>
+            <v-card-text>
+              <v-list lines="one">
+                <v-list-item
+                  v-for="(layer, index) in layers"
+                  :key="layer.id"
+                  class="align-center"
+                  :color="layer.selected ? 'primary' : ''"
+                  @click="selectLayer(layer)"
+                  style="border: 1px solid #ccc; margin-bottom: 8px; border-radius: 8px;"
+                >
+                  <template #prepend>
+                    <v-avatar size="40">
+                      <v-img :src="layer.src" />
+                    </v-avatar>
+                  </template>
+
+                  <v-list-item-title>{{ layer.label }}</v-list-item-title>
+
+                  <template #append>
+                    <v-btn icon size="small" @click.stop="moveLayerUp(index)">
+                      <v-icon>mdi-arrow-up</v-icon>
+                    </v-btn>
+                    <v-btn icon size="small" @click.stop="moveLayerDown(index)">
+                      <v-icon>mdi-arrow-down</v-icon>
+                    </v-btn>
+                    <v-btn icon size="small" @click.stop="duplicateLayer(layer)">
+                      <v-icon>mdi-content-copy</v-icon>
+                    </v-btn>
+                    <v-btn icon size="small" @click.stop="removeLayer(layer.id)">
+                      <v-icon>mdi-delete</v-icon>
+                    </v-btn>
+                    <v-slider
+                      v-model="layer.opacity"
+                      min="0"
+                      max="1"
+                      step="0.01"
+                      class="ml-4"
+                      style="width: 100px"
+                      hide-details
+                    />
+                    <v-text-field
+                      v-model.number="layer.opacity"
+                      type="number"
+                      min="0"
+                      max="1"
+                      step="0.01"
+                      class="ml-2"
+                      style="width: 80px"
+                      hide-details
+                    />
+                  </template>
+                </v-list-item>
+              </v-list>
+                <p v-if="layers.length === 0" class="text-grey">No layers yet.</p>
+            </v-card-text>
+        </v-card>
     </v-col>
     </v-row>
   </v-container>
@@ -173,6 +195,7 @@ const confirmTattoo = () => {
       scale: 1,
       rotation: 0,
       selected: false,
+      opacity: 1,
     })
 
     activeTattoo.value = null
@@ -223,18 +246,19 @@ const stopDrag = () => {
   selectedLayer = null
 }
 
-const selectLayer = (layer, event) => {
+const selectLayer = (layer, event = null) => {
   layers.value.forEach(l => (l.selected = false))
   layer.selected = true
   selectedLayer = layer
 
-  // Calculate proper offset relative to image position
-  const rect = event.target.getBoundingClientRect()
-  offsetX = (event.clientX - rect.left) / layer.scale
-  offsetY = (event.clientY - rect.top) / layer.scale
+  if (event) {
+    const rect = event.target.getBoundingClientRect()
+    offsetX = (event.clientX - rect.left) / layer.scale
+    offsetY = (event.clientY - rect.top) / layer.scale
 
-  window.addEventListener('mousemove', onDrag)
-  window.addEventListener('mouseup', stopDrag)
+    window.addEventListener('mousemove', onDrag)
+    window.addEventListener('mouseup', stopDrag)
+  }
 }
 
 const scaleOrRotate = (layer, event) => {
