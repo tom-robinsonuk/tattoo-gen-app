@@ -68,6 +68,12 @@
                         icon="mdi-arrow-down"
                         @click.stop="moveLayerDown(index)"
                     />
+                    <v-icon
+                      size="16"
+                      icon="mdi-content-copy"
+                      @click.stop="duplicateLayer(layer)"
+                      title="Duplicate"
+                    />
                 </v-chip>
                 <p v-if="layers.length === 0" class="text-grey">No layers yet.</p>
             </v-card-text>
@@ -77,6 +83,14 @@
     <!-- Right Column -->
     <v-col cols="12" md="6">
         <h2 class="text-h5 font-weight-bold mb-4">Live Preview</h2>
+        <v-alert type="info" variant="tonal" class="mb-4">
+        <strong>🖱️ Tattoo Editor Controls</strong><br>
+        • <b>Move:</b> Click and drag the tattoo image<br>
+        • <b>Scale:</b> Scroll up/down to zoom<br>
+        • <b>Rotate:</b> Hold <kbd>Ctrl</kbd> (or ⌘ on Mac) and scroll to rotate<br>
+        • <b>Reorder:</b> Use the arrows next to the layer chips<br>
+        • <b>Select:</b> Click a tattoo to make adjustments
+        </v-alert>
         <v-sheet
         class="bg-grey-lighten-3"
         height="400"
@@ -90,6 +104,7 @@
         <img
         v-for="(layer, index) in layers"
         :key="layer.id"
+
         :src="layer.src"
         :class="{ 'selected-layer': layer.selected }"
         :style="{
@@ -194,9 +209,12 @@ const startDrag = (layer, event) => {
 
 const onDrag = (event) => {
   if (!selectedLayer) return
-    const canvasRect = document.querySelector('.preview-canvas').getBoundingClientRect()
-    selectedLayer.x = event.clientX - canvasRect.left - offsetX
-    selectedLayer.y = event.clientY - canvasRect.top - offsetY
+  const canvasRect = document.querySelector('.preview-canvas').getBoundingClientRect()
+  const scaledOffsetX = offsetX * selectedLayer.scale
+  const scaledOffsetY = offsetY * selectedLayer.scale
+
+  selectedLayer.x = event.clientX - canvasRect.left - scaledOffsetX
+  selectedLayer.y = event.clientY - canvasRect.top - scaledOffsetY
 }
 
 const stopDrag = () => {
@@ -212,8 +230,8 @@ const selectLayer = (layer, event) => {
 
   // Calculate proper offset relative to image position
   const rect = event.target.getBoundingClientRect()
-  offsetX = event.clientX - rect.left
-  offsetY = event.clientY - rect.top
+  offsetX = (event.clientX - rect.left) / layer.scale
+  offsetY = (event.clientY - rect.top) / layer.scale
 
   window.addEventListener('mousemove', onDrag)
   window.addEventListener('mouseup', stopDrag)
@@ -229,6 +247,8 @@ const scaleOrRotate = (layer, event) => {
     if (layer.scale < 0.2) layer.scale = 0.2
   }
 }
+
+
 
 const removeLayer = (id) => {
   layers.value = layers.value.filter(layer => layer.id !== id)
@@ -248,4 +268,36 @@ const moveLayerDown = (index) => {
   layers.value.splice(index + 1, 0, temp)
 }
 
+const duplicateLayer = (layer) => {
+  console.log('Duplicating:', layer)
+  const newLayer = {
+    id: Date.now(),
+    label: `Layer ${layers.value.length + 1}`,
+    src: layer.src,
+    x: layer.x + 20,
+    y: layer.y + 20,
+    scale: layer.scale,
+    rotation: layer.rotation,
+    selected: false,
+  }
+  layers.value = [...layers.value, newLayer] //layers.value.push(newLayer)
+}
+
+
+import { onMounted, onBeforeUnmount } from 'vue'
+
+const handleKeydown = (e) => {
+  if (e.ctrlKey && e.key.toLowerCase() === 'c') {
+    const selected = layers.value.find(l => l.selected)
+    if (selected) duplicateLayer(selected)
+  }
+}
+
+onMounted(() => {
+  window.addEventListener('keydown', handleKeydown)
+})
+
+onBeforeUnmount(() => {
+  window.removeEventListener('keydown', handleKeydown)
+})
 </script>
