@@ -44,20 +44,33 @@
         <!-- Layer Manager -->
         <v-card variant="tonal" elevation="0">
         <v-card-title>Tattoo Layers</v-card-title>
-        <v-card-text>
-            <v-chip
-            v-for="(layer, index) in layers"
-            :key="layer.id"
-            class="ma-1"
-            label
-            closable
-            @click:close="removeLayer(layer.id)"
-            >
-            <v-img :src="layer.src" max-width="30" class="mr-2" />
-            Layer {{ index + 1 }}
-            </v-chip>
-            <p v-if="layers.length === 0" class="text-grey">No layers yet.</p>
-        </v-card-text>
+            <v-card-text>
+                    <v-chip
+                    v-for="(layer, index) in layers"
+                    :key="layer.id"
+                    class="ma-1"
+                    label
+                    closable
+                    @click:close="removeLayer(layer.id)"
+                    :color="layer.selected ? 'primary' : ''"
+                    :variant="layer.selected ? 'flat' : 'tonal'"
+                    @click="selectLayer(layer)"
+                    >
+                    {{ layer.label }}
+                    <v-icon
+                        size="16"
+                        class="ml-1"
+                        icon="mdi-arrow-up"
+                        @click.stop="moveLayerUp(index)"
+                    />
+                    <v-icon
+                        size="16"
+                        icon="mdi-arrow-down"
+                        @click.stop="moveLayerDown(index)"
+                    />
+                </v-chip>
+                <p v-if="layers.length === 0" class="text-grey">No layers yet.</p>
+            </v-card-text>
         </v-card>
     </v-col>
 
@@ -74,24 +87,25 @@
             class="preview-canvas"
             style="position: relative; width: 100%; height: 100%; overflow: hidden;"
         >
-            <img
-            v-for="layer in layers"
-            :key="layer.id"
-            :src="layer.src"
-            :class="{ 'selected-layer': layer.selected }"
-            :style="{
-                position: 'absolute',
-                top: `${layer.y}px`,
-                left: `${layer.x}px`,
-                transform: `rotate(${layer.rotation}deg) scale(${layer.scale})`,
-                cursor: 'move',
-                maxWidth: '120px',
-                border: layer.selected ? '2px dashed #00f' : 'none'
-            }"
-            @mousedown="selectLayer(layer, $event)"
-            @wheel.prevent="scaleOrRotate(layer, $event)"
-            draggable="false"
-            />
+        <img
+        v-for="(layer, index) in layers"
+        :key="layer.id"
+        :src="layer.src"
+        :class="{ 'selected-layer': layer.selected }"
+        :style="{
+            position: 'absolute',
+            top: `${layer.y}px`,
+            left: `${layer.x}px`,
+            transform: `rotate(${layer.rotation}deg) scale(${layer.scale})`,
+            cursor: 'move',
+            maxWidth: '120px',
+            border: layer.selected ? '2px dashed #00f' : 'none',
+            zIndex: index  // ← this line controls layer order!
+        }"
+        @mousedown="selectLayer(layer, $event)"
+        @wheel.prevent="scaleOrRotate(layer, $event)"
+        draggable="false"
+        />
         </div>
         </v-sheet>
     </v-col>
@@ -132,22 +146,18 @@ const layers = ref([])
 
 const confirmTattoo = () => {
   if (activeTattoo.value) {
-    tattooLayers.value.push({
-        src: activeTattoo.value,
-        x: 0,
-        y: 0,
-        rotation: 0,
-        scale: 1,
-        selected: false
-    })
+    const id = Date.now()
+    const label = `Layer ${layers.value.length + 1}`
 
     layers.value.push({
-    id: Date.now(),
-    src: activeTattoo.value,
-    x: 0,
-    y: 0,
-    scale: 1,
-    rotation: 0
+      id,
+      label,
+      src: activeTattoo.value,
+      x: 0,
+      y: 0,
+      scale: 1,
+      rotation: 0,
+      selected: false,
     })
 
     activeTattoo.value = null
@@ -222,6 +232,20 @@ const scaleOrRotate = (layer, event) => {
 
 const removeLayer = (id) => {
   layers.value = layers.value.filter(layer => layer.id !== id)
+}
+
+const moveLayerUp = (index) => {
+  if (index <= 0) return
+  const temp = layers.value[index]
+  layers.value.splice(index, 1)
+  layers.value.splice(index - 1, 0, temp)
+}
+
+const moveLayerDown = (index) => {
+  if (index >= layers.value.length - 1) return
+  const temp = layers.value[index]
+  layers.value.splice(index, 1)
+  layers.value.splice(index + 1, 0, temp)
 }
 
 </script>

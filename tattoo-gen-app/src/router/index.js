@@ -6,7 +6,7 @@ import PacksPage from '../pages/PacksPage.vue'
 import AccountPage from '../pages/AccountPage.vue'
 
 const routes = [
-    { path: '/', redirect: '/studio' },
+    { path: '/', redirect: '/StudioPage' },
     { path: '/login', component: LoginPage },
     { path: '/studio', component: StudioPage },
     { path: '/packs', component: PacksPage },
