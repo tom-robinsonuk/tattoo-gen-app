@@ -45,14 +45,17 @@
     <!-- Right Column -->
     <v-col cols="12" md="6">
         <h2 class="text-h5 font-weight-bold mb-4">Live Preview</h2>
-        <v-alert type="info" variant="tonal" class="mb-4">
-        <strong>🖱️ Tattoo Editor Controls</strong><br>
-        • <b>Move:</b> Click and drag the tattoo image<br>
-        • <b>Scale:</b> Scroll up/down to zoom<br>
-        • <b>Rotate:</b> Hold <kbd>Ctrl</kbd> (or ⌘ on Mac) and scroll to rotate<br>
-        • <b>Reorder:</b> Use the arrows next to the layer chips<br>
-        • <b>Select:</b> Click a tattoo to make adjustments
-        </v-alert>
+          <v-alert type="info" variant="tonal" class="mb-4">
+            <strong>🖱️ Tattoo Editor Controls</strong><br>
+            • <b>Move:</b> Click and drag the tattoo image<br>
+            • <b>Scale:</b> Scroll up/down to zoom<br>
+            • <b>Rotate:</b> Hold <kbd>Ctrl</kbd> (or ⌘ on Mac) and scroll to rotate<br>
+            • <b>Opacity:</b> Adjust slider or type value in layer panel<br>
+            • <b>Reorder:</b> Use the up/down arrows next to layers<br>
+            • <b>Duplicate:</b> Click copy icon or press <kbd>Ctrl</kbd> + <kbd>C</kbd><br>
+            • <b>Undo:</b> <kbd>Ctrl</kbd> + <kbd>Z</kbd> &nbsp;&nbsp;&nbsp;&nbsp; • <b>Redo:</b> <kbd>Ctrl</kbd> + <kbd>Y</kbd><br>
+            • <b>Select:</b> Click a tattoo to make adjustments
+          </v-alert>
         <v-sheet
         class="bg-grey-lighten-3"
         height="400"
@@ -183,6 +186,7 @@ const layers = ref([])
 
 const confirmTattoo = () => {
   if (activeTattoo.value) {
+    saveSnapshot() 
     const id = Date.now()
     const label = `Layer ${layers.value.length + 1}`
 
@@ -251,6 +255,9 @@ const selectLayer = (layer, event = null) => {
   layer.selected = true
   selectedLayer = layer
 
+  // 🆕 Save state before interaction
+  saveSnapshot()
+
   if (event) {
     const rect = event.target.getBoundingClientRect()
     offsetX = (event.clientX - rect.left) / layer.scale
@@ -262,6 +269,7 @@ const selectLayer = (layer, event = null) => {
 }
 
 const scaleOrRotate = (layer, event) => {
+  saveSnapshot() // 🆕 Save before modifying
   if (event.ctrlKey) {
     // CTRL + scroll = rotate
     layer.rotation += event.deltaY > 0 ? 5 : -5
@@ -275,17 +283,20 @@ const scaleOrRotate = (layer, event) => {
 
 
 const removeLayer = (id) => {
+  saveSnapshot() // 
   layers.value = layers.value.filter(layer => layer.id !== id)
 }
 
 const moveLayerUp = (index) => {
   if (index <= 0) return
+  saveSnapshot()
   const temp = layers.value[index]
   layers.value.splice(index, 1)
   layers.value.splice(index - 1, 0, temp)
 }
 
 const moveLayerDown = (index) => {
+  saveSnapshot() // 🆕 Save before modifying
   if (index >= layers.value.length - 1) return
   const temp = layers.value[index]
   layers.value.splice(index, 1)
@@ -294,6 +305,7 @@ const moveLayerDown = (index) => {
 
 const duplicateLayer = (layer) => {
   console.log('Duplicating:', layer)
+  saveSnapshot() // 
   const newLayer = {
     id: Date.now(),
     label: `Layer ${layers.value.length + 1}`,
@@ -311,7 +323,13 @@ const duplicateLayer = (layer) => {
 import { onMounted, onBeforeUnmount } from 'vue'
 
 const handleKeydown = (e) => {
-  if (e.ctrlKey && e.key.toLowerCase() === 'c') {
+  if (e.ctrlKey && e.key === 'z') {
+    e.preventDefault()
+    undo()
+  } else if (e.ctrlKey && e.key === 'y') {
+    e.preventDefault()
+    redo()
+  } else if (e.ctrlKey && e.key === 'c') {
     const selected = layers.value.find(l => l.selected)
     if (selected) duplicateLayer(selected)
   }
@@ -324,4 +342,40 @@ onMounted(() => {
 onBeforeUnmount(() => {
   window.removeEventListener('keydown', handleKeydown)
 })
+
+const history = ref([])
+const future = ref([]) // for redo
+
+const saveSnapshot = () => {
+  const snapshot = getCloneableLayers()
+  history.value.push(JSON.parse(JSON.stringify(snapshot))) // safe deep clone
+  future.value = []
+}
+
+const undo = () => {
+  if (history.value.length === 0) return
+  future.value.push(JSON.parse(JSON.stringify(getCloneableLayers())))
+  layers.value = JSON.parse(JSON.stringify(history.value.pop()))
+}
+
+const redo = () => {
+  if (future.value.length === 0) return
+  history.value.push(JSON.parse(JSON.stringify(getCloneableLayers())))
+  layers.value = JSON.parse(JSON.stringify(future.value.pop()))
+}
+
+const getCloneableLayers = () => {
+  return layers.value.map(layer => ({
+    id: layer.id,
+    label: layer.label,
+    src: layer.src,
+    x: layer.x,
+    y: layer.y,
+    scale: layer.scale,
+    rotation: layer.rotation,
+    selected: layer.selected,
+    opacity: layer.opacity,
+  }))
+}
+
 </script>
