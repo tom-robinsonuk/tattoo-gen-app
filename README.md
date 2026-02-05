@@ -120,7 +120,6 @@ tattoo-gen-app/
 - [Replicate](https://replicate.com/) – AI inference & model hosting
 - [cjwbw/rembg](https://replicate.com/cjwbw/rembg) – Background remover
 - [Stability AI - Stable Diffusion](https://replicate.com/stability-ai/stable-diffusion) – Image generation
-- App development: [@YourUsername]
 
 ---
 
